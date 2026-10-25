@@ -1,5 +1,9 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# ----- mob08 server.py + additions -----
+import os, uuid
+from datetime import datetime, timezone
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from typing import List
 
 app = FastAPI()
@@ -15,11 +19,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Upload Folder & Static File Serving
+UPLOAD_DIR = "/tmp/uploads" 
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/images", StaticFiles(directory=UPLOAD_DIR), name="images")
 
 @app.get("/")
 async def root():
     return {"message": "FastAPI WebSocket chat server is running"}
 
+# HTTP Endpoints
+@app.post("/upload-photo")
+async def upload_photo(file: UploadFile = File(...)):
+    ext = os.path.splitext(file.filename or "")[1] or ".jpg"
+    filename = f"{uuid.uuid4().hex}{ext}"
+    path = os.path.join(UPLOAD_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(await file.read())
+    print(f"Saved file: {filename}")   # shows up in Render logs
+    return {
+        "filename": filename,
+        "url": f"/images/{filename}",
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+@app.get("/photos")
+async def list_photos():
+    names = os.listdir(UPLOAD_DIR)
+    names.sort(key=lambda n: os.path.getmtime(os.path.join(UPLOAD_DIR, n)), reverse=True)
+    return [{"filename": n, "url": f"/images/{n}"} for n in names]
 
 class ConnectionManager:
     def __init__(self):
