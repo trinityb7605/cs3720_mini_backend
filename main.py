@@ -28,6 +28,7 @@ app.mount("/images", StaticFiles(directory=UPLOAD_DIR), name="images")
 async def root():
     return {"message": "FastAPI WebSocket chat server is running"}
 
+# AI-assisted (Claude, Oct 2026): /upload-photo, /photos, and /images mount
 # HTTP Endpoints
 @app.post("/upload-photo")
 async def upload_photo(file: UploadFile = File(...)):
